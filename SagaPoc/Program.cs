@@ -1,5 +1,5 @@
 ﻿using System;
-using System.Reflection.Metadata;
+using System.Linq;
 using System.Threading.Tasks;
 using SagaPoc.Synchronous;
 
@@ -11,17 +11,37 @@ namespace SagaPoc
         {
             var p = new Program();
             p.RunDemo().GetAwaiter().GetResult();
+            Console.ReadKey();
         }
 
         async Task RunDemo()
         {
+            while (true)
+            {
+                Console.WriteLine("1. Synchronous Success\r\n2. Synchronous Failure\r\n");
+                Console.Write("Select choice:");
+                var choice = Console.ReadLine();
 
-        }
+                var choices = new[] {1, 2};
+                if (!int.TryParse(choice, out var choiceNum) || !choices.Contains(choiceNum))
+                {
+                    Console.WriteLine("Invalid choice!");
+                    Console.WriteLine();
+                    continue;
+                }
 
-        Task SynchronousDemo()
-        {
-            var syncDemo = new Synchronous.Usage();
-            return syncDemo.Run();
+                switch (choiceNum)
+                {
+                    case 1:
+                        await new SynchronousExample(true).Run();
+                        break;
+                    case 2:
+                        await new SynchronousExample(false).Run();
+                        break;
+                }
+
+                Console.WriteLine();
+            }
         }
     }
 

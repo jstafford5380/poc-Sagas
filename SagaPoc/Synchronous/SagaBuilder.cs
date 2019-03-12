@@ -26,11 +26,7 @@ namespace SagaPoc.Synchronous
         ISagaActivity<TStateType> OnSucceeded(Func<ISagaControl, TStateType, Task> successCallback);
 
         ISagaBuilder<TStateType> Build();
-
-        Func<ISagaControl, TStateType, SagaError, Task> GetFailureCallback();
-
-        Func<ISagaControl, TStateType, Task> GetSuccessCallback();
-
+        
         Task RunAsync();
     }
 
@@ -94,9 +90,11 @@ namespace SagaPoc.Synchronous
             }
             catch (Exception e)
             {
-                var ex = new SagaActivityException($"Saga activity '{Name}' failed :: {e.InnerException}", e);
+                var ex = new SagaActivityException($"Saga activity '{Name}' failed :: {e.Message}", e);
                 if (_whenFail != null)
                     await _whenFail(null, _builder.State, new SagaError { Exception = ex });
+
+                throw ex;
             }
         }
     }
@@ -114,7 +112,7 @@ namespace SagaPoc.Synchronous
         void MarkAsComplete();
     }
 
-    public class SagaBuilder<TStateType> : ISagaBuilder<TStateType>
+    public class SagaBuilder<TStateType> : ISagaBuilder<TStateType>, ISagaControl
         where TStateType : new()
     {
         private string _name;
@@ -150,24 +148,19 @@ namespace SagaPoc.Synchronous
         {
             ISagaActivity<TStateType> lastActivity = null;
 
-            try
+            foreach (var activity in _steps)
             {
-                foreach (var activity in _steps)
-                {
-                    lastActivity = activity;
-                    await activity.RunAsync().ConfigureAwait(false);
-                }
-
-                return State;
+                // TODO: retries?
+                lastActivity = activity;
+                await activity.RunAsync().ConfigureAwait(false);
             }
-            catch (SagaActivityException e)
-            {
-                var callback = lastActivity?.GetFailureCallback();
-                if(callback != null)
-                    await callback.Invoke(null, State, new SagaError {Exception = e});
 
-                throw;
-            }
+            return State;
+        }
+
+        public void MarkAsComplete()
+        {
+            
         }
     }
 }
